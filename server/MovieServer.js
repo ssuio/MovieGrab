@@ -1,4 +1,5 @@
 let net = require('net');
+const uuidV4 = require('uuid/v4');
 const path = require('path');
 const fs = require('fs');
 const settings = require('./settings.json')
@@ -7,7 +8,8 @@ const moviesPath = path.join(process.env[(process.platform == 'win32') ? 'USERPR
 class MovieServer {
 
 	constructor(){
-		this.port = settings.port;
+		this.movieGrabPort = settings.port;
+		this.filePort = 4444;
 		this.members = settings.members;
 		this.clients = [];
 		this.getMovies((err, movies, movieList)=>{
@@ -18,42 +20,47 @@ class MovieServer {
 	}
 
 	startServer(){
-		net.createServer((socket)=>{
-			socket.name = socket.remoteAddress + ":" + socket.remotePort;
-			this.clients.push(socket);
-			socket.write("Welcome " + socket.name + "\n");
-			this.broadcast(socket.name + " joined the chat\n", socket);
+		
+			net.createServer((socket)=>{
+				socket.id = uuidV4();
+				socket.name = socket.remoteAddress + ":" + socket.remotePort;
+				this.clients.push(socket);
+				socket.write("Welcome " + socket.name + "\n");
+				this.broadcast(socket.name + " joined the chat\n", socket);
 
-			socket.on('data', (data)=>{
-				this.execute(data.toString().trim(), (err,res)=>{
-					if(res){
-						this.broadcast(res.toString().trim(), socket);
-					}
+				socket.on('data', (data)=>{
+					this.execute(data.toString().trim() , (err,res)=>{
+						if(res){
+							this.broadcast(res.toString().trim(), socket);
+						}
 
-					if(res.toString().trim().indexOf('xssuiox') != -1){
-						let fileName = res.toString().trim().split('xssuiox')[1];
-						let sourceFile = path.join(moviesPath, fileName);
-						let rs = fs.createReadStream(sourceFile);
-						rs.on('open', function() {
-						    rs.pipe(socket);
-					  	});
-					}
+					});
 				});
+
+				socket.on('close', (data)=>{
+					console.log('socket close');
+				});
+
+				socket.on("error", (err) =>{
+				    console.log("Caught flash policy server socket error: ");
+				    this.clients.map(sock=>{
+				    	if(sock.id == socket.id)
+				    		console.log('Found socket and remove!');
+				    });
+				    socket.destroy();
+				});
+
+				this.clients.map(sock=>console.log('client:'+ sock.remoteAddress));
+
+			}).listen(this.movieGrabPort)
+			.on("error", (err) =>{
+			    console.log("Movie server error. ");
+			    console.log(err.stack);
 			});
 
-			this.clients.map(sock=>console.log('client:'+sock.name));
+		
 
-			// socket.end('end', ()=>{
-			// 	this.clients.splice(this.clientsclients.indexOf(socket), 1);
-			// 	this.broadcast(socket.name + "left the chat.\n");
-			// });
-			console.log('server on!');
-
-		}).listen(this.port)
-		.on('error', (err)=>{
-			console.log('!!!!!!!!!!!!!');
-			console.log(err);
-		});
+		console.log('server on!');
 
 		
 	}
@@ -62,10 +69,10 @@ class MovieServer {
 		this.clients.forEach( client=>{
 		// if(client == sender) return;
 
-		client.write(message);
+		client.write(message + '\n');
 		});
 
-		process.stdout.write(message)
+		process.stdout.write(message + '\n');
 	}
 
 	getMovies(cb){
@@ -97,14 +104,38 @@ class MovieServer {
 				break;
 			case 'grab':
 				let fileName = this.movieList[Number(cmdArr[1])-1];
+				let fileSize = fs.statSync(path.join(moviesPath, fileName)).size;
+
 				if(!fileName)
 					return cb('error', 'no such movie');
 				else{
-					return cb('success', 'fileNamexssuiox' + fileName);
+					this.startFileServer(fileName);
+					return cb('success', 'getFilexssuiox' + fileName + 'xssuiox' + fileSize + 'xssuiox' + this.filePort);
 				}
 			default:
 				break;
 		}
+	}
+
+	startFileServer(fileName){
+		let fileServer = net.createServer((socket)=>{
+			console.log('File server connected.');
+
+			socket.on('close', (data)=>{
+				fileServer.close();
+			});
+
+			let sourceFile = path.join(moviesPath, fileName);
+			let rs = fs.createReadStream(sourceFile);
+			rs.on('open', function() {
+			    rs.pipe(socket);
+		  	});
+
+		}).listen(this.filePort)
+		.on('error', (err)=>{
+			console.log('File server ERROR!!!!!!!!!!!!!');
+			console.log(err);
+		});;
 	}
 
 }

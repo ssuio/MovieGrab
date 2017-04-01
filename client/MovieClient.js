@@ -2,6 +2,8 @@ let net = require('net');
 let fs = require('fs');
 let stdin = process.openStdin();
 let path = require('path');
+const domain = '127.0.0.1';
+// const domain = 'ssuio.idv.tw';
 
 class MovieClient{
 	constructor(){
@@ -12,7 +14,7 @@ class MovieClient{
 	}
 
 	connect(){
-		this.client.connect('3333', '127.0.0.1', ()=>{
+		this.client.connect('3333', domain, ()=>{
 			let msg = '';
 			console.log('Connected');
 			
@@ -27,11 +29,11 @@ class MovieClient{
 			let msg = data.toString().trim();
 			let msgArr = msg.split('xssuiox');
 			switch(msgArr[0]){
-				case 'fileName':
+				case 'getFile':
 					let fileName = msgArr[1];
-					this.download(msgArr[1], data , ()=>{
-
-					});
+					let fileSize = msgArr[2];
+					let fileSockPort = msgArr[3];
+					this.download(fileName , fileSize, fileSockPort , ()=>{});
 					break;
 				default:
 					console.log(msg);
@@ -40,14 +42,39 @@ class MovieClient{
 		})
 	}
 
-	download(fileName, data, cb){
-		let stream = fs.createWriteStream(path.join(this.downloadPath ,fileName));
+	download(fileName, fileSize, port , cb){
+		let fileClient = new net.Socket();
+		let offset = 0;
+		let percentage = 0;
 
-		this.client.pipe(stream).on('finish', () => {
-		    console.log("Write successful");
-		    console.log("Press Ctr+c to exit");
-		  })
-		// let dowloadPath = path.join(this.dowloadPath, fileName);
+		try{
+			fileClient.connect( port , domain, ()=>{
+				let stream = fs.createWriteStream(path.join(this.downloadPath ,fileName));
+				fileClient.pipe(stream).on('finish', () => {
+				    console.log("Write successful");
+				    fileClient.destroy();
+				  })
+			});
+
+			fileClient.on('data', (data)=>{
+				let newPercentage = Math.floor((offset/fileSize) * 100);
+				offset += data.length;
+				if(newPercentage > percentage){
+					percentage = newPercentage;
+					console.log('progress....' + newPercentage + '%' );
+				}
+			});
+
+			fileClient.on('close', function() {
+			    console.log('Connection closed');
+			});	
+
+			fileClient.on('error', ()=>{
+				console.log('ERRRRRR');
+			});
+		}catch(e){
+			console.log(e);
+		}
 		console.log(`${fileName} is downloading...`);
 	}
 }

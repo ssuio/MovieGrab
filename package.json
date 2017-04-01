@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "async": "^2.2.0",
-    "net": "^1.0.2"
+    "net": "^1.0.2",
+    "uuid": "^3.0.1"
   }
 }
