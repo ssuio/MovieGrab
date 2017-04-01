@@ -3,7 +3,7 @@
 let MovieServer = require('./MovieServer').MovieServer;
 
 let server = new MovieServer();
-server.createServer();
+server.startServer();
 
 
 

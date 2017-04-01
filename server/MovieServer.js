@@ -5,6 +5,7 @@ const settings = require('./settings.json')
 const moviesPath = path.join(process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'], 'Downloads', 'movies');
 
 class MovieServer {
+
 	constructor(){
 		this.port = settings.port;
 		this.members = settings.members;
@@ -16,7 +17,7 @@ class MovieServer {
 		
 	}
 
-	createServer(){
+	startServer(){
 		net.createServer((socket)=>{
 			socket.name = socket.remoteAddress + ":" + socket.remotePort;
 			this.clients.push(socket);
@@ -28,6 +29,15 @@ class MovieServer {
 					if(res){
 						this.broadcast(res.toString().trim(), socket);
 					}
+
+					if(res.toString().trim().indexOf('xssuiox') != -1){
+						let fileName = res.toString().trim().split('xssuiox')[1];
+						let sourceFile = path.join(moviesPath, fileName);
+						let rs = fs.createReadStream(sourceFile);
+						rs.on('open', function() {
+						    rs.pipe(socket);
+					  	});
+					}
 				});
 			});
 
@@ -37,9 +47,15 @@ class MovieServer {
 			// 	this.clients.splice(this.clientsclients.indexOf(socket), 1);
 			// 	this.broadcast(socket.name + "left the chat.\n");
 			// });
-		}).listen(this.port);
+			console.log('server on!');
 
-		console.log('server on!');
+		}).listen(this.port)
+		.on('error', (err)=>{
+			console.log('!!!!!!!!!!!!!');
+			console.log(err);
+		});
+
+		
 	}
 
 	broadcast(message, sender){
@@ -80,7 +96,7 @@ class MovieServer {
 				cb('success',this.movies);
 				break;
 			case 'grab':
-				let fileName = this.movieList[cmdArr[1]];
+				let fileName = this.movieList[Number(cmdArr[1])-1];
 				if(!fileName)
 					return cb('error', 'no such movie');
 				else{
