@@ -1,5 +1,5 @@
-var fs = require('fs');
-var path = require('path');
-var file = fs.statSync("C:\\Users\\Cyruss\\Downloads\\movies\\s.rar");
 
-console.log(file);
+for(var i = 0; i<99999999 ; i++)
+	process.stdout.write(i+'');
+
+

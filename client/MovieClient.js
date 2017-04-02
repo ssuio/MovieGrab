@@ -2,7 +2,9 @@ let net = require('net');
 let fs = require('fs');
 let stdin = process.openStdin();
 let path = require('path');
+const ProgressBar = require('progress');
 const domain = '127.0.0.1';
+
 // const domain = 'ssuio.idv.tw';
 
 class MovieClient{
@@ -44,8 +46,17 @@ class MovieClient{
 
 	download(fileName, fileSize, port , cb){
 		let fileClient = new net.Socket();
-		let offset = 0;
 		let percentage = 0;
+		const startTime = new Date();
+		let spendTime = 0;
+		let progressBar = new ProgressBar('  downloading [:bar] :percent :spendTime s', 
+				{
+					complete:'=',
+				    incomplete: ' ',
+				    width: 20,
+					total: Number(fileSize),
+					'spendTime': spendTime
+				});
 
 		try{
 			fileClient.connect( port , domain, ()=>{
@@ -57,11 +68,14 @@ class MovieClient{
 			});
 
 			fileClient.on('data', (data)=>{
-				let newPercentage = Math.floor((offset/fileSize) * 100);
-				offset += data.length;
-				if(newPercentage > percentage){
-					percentage = newPercentage;
-					console.log('progress....' + newPercentage + '%' );
+				spendTime = (new Date() - startTime)/1000;			
+
+				progressBar.tick(data.length,{
+					'spendTime' : spendTime
+				});
+
+				if(progressBar.complete){
+					console.log('\ncomplete\n');
 				}
 			});
 

@@ -3,7 +3,8 @@ const uuidV4 = require('uuid/v4');
 const path = require('path');
 const fs = require('fs');
 const settings = require('./settings.json')
-const moviesPath = path.join(process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'], 'Downloads', 'movies');
+// const moviesPath = path.join(process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'], 'Downloads', 'movies');
+const moviesPath = 'H:\\MovieGrabLocation';
 
 class MovieServer {
 
